@@ -4,6 +4,16 @@ Aplicație interactivă pentru **Fizica distractivă 06 — Primul motor electri
 
 Experimentele vin din Virgil Atanasiu, *Fizica distractivă*, E.D.P. București, 1964 — „Galvanometru dintr-o busolă" (p. 210) și „Principiul motorului electric" (p. 220). Varianta de „motor elementar" din carte (p. 221) funcționează cu **mercur**; a fost înlocuită aici cu **motorul homopolar**, care arată aceeași fizică fără nicio substanță periculoasă.
 
+## Simulări 3D
+
+Toate cele trei montaje sunt desenate **în 3D**, cu un motor de randare scris special pentru aplicație (`engine3d.js`): proiecție în perspectivă, sortare după adâncime, umbrire după direcția luminii și umbre pe masă. Fără WebGL, fără biblioteci — merge pe orice calculator de școală și offline.
+
+- **Trage cu mouse-ul (sau cu degetul)** ca să rotești montajul în jurul lui și să-l privești din orice unghi.
+- **Rotița mouse-ului** apropie și depărtează.
+- Butonul **Vedere inițială** readuce camera în poziția de pornire.
+
+Perspectiva liberă contează didactic: din față se vede cum se învârte sârma motorului, de sus se vede exact cum stă acul busolei față de spire, iar din lateral se vede că sârma de pe șine chiar plutește deasupra magnetului.
+
 ## Cele trei moduri
 
 ### 1. Busola lui Oersted
@@ -54,8 +64,9 @@ Două detalii pedagogice intenționate:
 ```
 index.html      – pagina și structura celor 4 moduri
 style.css       – stilurile, inclusiv tema întunecată
+engine3d.js     – motorul 3D (proiecție, corpuri, umbrire, control orbital)
 i18n.js         – toate textele, în română și engleză
-app.js          – cele trei simulări și quizul
+app.js          – cele trei scene 3D, fizica simulată și quizul
 .github/workflows/pages.yml
 ```
 

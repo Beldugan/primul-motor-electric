@@ -8,6 +8,8 @@ const I18N = {
     "tab.motor": "3. Motorul care se învârte",
     "tab.quiz": "4. Quiz",
     "btn.reset": "Pune sârma la mijloc",
+    "view.hint": "🖱️ Trage cu mouse-ul (sau cu degetul) ca să rotești scena în jurul ei; rotița mouse-ului apropie și depărtează.",
+    "view.reset": "Vedere inițială",
 
     /* --- Oersted --- */
     "oe.h": "Galvanometrul din busolă — curentul face magnet",
@@ -111,6 +113,8 @@ const I18N = {
     "tab.motor": "3. The spinning motor",
     "tab.quiz": "4. Quiz",
     "btn.reset": "Put the wire back in the middle",
+    "view.hint": "🖱️ Drag with the mouse (or your finger) to turn the scene around; the mouse wheel zooms in and out.",
+    "view.reset": "Reset the view",
 
     "oe.h": "A galvanometer from a compass — current makes a magnet",
     "oe.hint": "A compass, a cardboard box and wire wound around it. Switch the current on and watch the needle. Then change the number of turns, without changing the battery — and see what happens.",

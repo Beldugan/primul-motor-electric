@@ -1,5 +1,5 @@
 /* =========================================================
-   Primul motor electric — logica aplicației
+   Primul motor electric — logica aplicației (simulări 3D)
    Fizica distractivă 06 · fără biblioteci externe
    ========================================================= */
 
@@ -17,45 +17,16 @@ function fitCanvas(cv) {
 }
 function say(el, txt, cls) { el.textContent = txt; el.className = "say" + (cls ? " " + cls : ""); }
 
-/* baterie desenată, cu polaritate */
-function drawBattery(ctx, x, y, w, h, rev, label) {
-  ctx.save();
-  ctx.fillStyle = "#3b4a5c"; ctx.strokeStyle = "#26313f"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#e6a23c";
-  ctx.beginPath(); ctx.roundRect(x - w / 2 + 4, y - h / 2 + 4, w * 0.34, h - 8, 4); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "bold 17px system-ui, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(rev ? "−" : "+", x - w / 4, y);
-  ctx.fillText(rev ? "+" : "−", x + w / 4, y);
-  ctx.restore();
-  if (label) {
-    ctx.save(); ctx.fillStyle = "#6c7a8c"; ctx.font = "12px system-ui, sans-serif";
-    ctx.textAlign = "center"; ctx.fillText(label, x, y + h / 2 + 18); ctx.restore();
-  }
-}
-/* puncte de curent pe un traseu (listă de puncte) */
-function drawFlow(ctx, pts, phase, count) {
-  let total = 0; const segs = [];
-  for (let i = 0; i < pts.length - 1; i++) {
-    const l = Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].y - pts[i].y);
-    segs.push(l); total += l;
-  }
-  for (let k = 0; k < count; k++) {
-    let d = ((phase + k / count) % 1) * total;
-    for (let i = 0; i < segs.length; i++) {
-      if (d <= segs[i]) {
-        const u = segs[i] ? d / segs[i] : 0;
-        const x = pts[i].x + (pts[i + 1].x - pts[i].x) * u;
-        const y = pts[i].y + (pts[i + 1].y - pts[i].y) * u;
-        ctx.save(); ctx.fillStyle = "#ffd400"; ctx.shadowColor = "#ffd400"; ctx.shadowBlur = 8;
-        ctx.beginPath(); ctx.arc(x, y, 4.2, 0, 7); ctx.fill(); ctx.restore();
-        break;
-      }
-      d -= segs[i];
-    }
-  }
-}
+/* culori comune */
+const C = {
+  table: [214, 199, 172], tableDark: [196, 180, 152],
+  carton: [205, 170, 118], cartonDark: [178, 144, 96],
+  copper: [193, 116, 58], copperHot: [255, 122, 70],
+  steel: [168, 176, 186], steelLight: [205, 212, 220],
+  dark: [59, 74, 92], battery: [48, 60, 76], batteryTop: [230, 162, 60],
+  red: [214, 55, 55], blue: [52, 112, 208], white: [245, 248, 250],
+  glass: [226, 240, 248], brass: [218, 170, 72]
+};
 
 /* taburi, temă, limbă */
 const TABS = [["tab-oersted", "p-oersted"], ["tab-sine", "p-sine"], ["tab-motor", "p-motor"], ["tab-quiz", "p-quiz"]];
@@ -71,94 +42,87 @@ $("langRo").addEventListener("click", () => setLang("ro"));
 $("langEn").addEventListener("click", () => setLang("en"));
 
 /* =========================================================
-   1. BUSOLA LUI OERSTED
+   1. BUSOLA LUI OERSTED — scenă 3D
    ========================================================= */
 const cvO = $("cvOe"), ctxO = fitCanvas(cvO);
-const O = { on: false, rev: false, turns: 5, batt: 1, ang: 0, w: 0, phase: 0, maxSeen: 0 };
-const BOX = { x: 250, y: 86, w: 400, h: 200 };
-const COMP = { x: 450, y: 186, r: 66 };
+const camO = new Cam({ yaw: -0.58, pitch: 0.30, dist: 560, target: [0, 58, 0] });
+const sceneO = new Scene();
+orbit(cvO, camO);
+const O = { on: false, rev: false, turns: 5, batt: 1, ang: 0, w: 0, phase: 0 };
+
+/* colacul de sârmă (50–60 spire în carte), vertical, cu busola în centru — ca în fig. 187 */
+const RING = { r: 74, cy: 76 }, NEEDLE_Y = 18;
 
 function oeStrength() { return O.on ? O.turns * O.batt : 0; }
-function oeTarget() {  // radiani, 0 = nord (sus)
-  const s = oeStrength();
-  const deg = 85 * (1 - Math.exp(-s / 14));
+function oeTarget() {
+  const deg = 85 * (1 - Math.exp(-oeStrength() / 14));
   return (O.rev ? -1 : 1) * deg * Math.PI / 180;
+}
+function turnZ(i, shown) { return shown > 1 ? -13 + i * 26 / (shown - 1) : 0; }
+
+/* traseul curentului: bornă → spirele colacului → bornă */
+function coilPath() {
+  const shown = Math.min(O.turns, 12), p = [[250, 30, -60], [120, 40, -40]];
+  for (let i = 0; i < shown; i++) {
+    const z = turnZ(i, shown);
+    circlePath(0, RING.cy, z, RING.r, "z", 16).forEach(q => p.push(q));
+  }
+  p.push([120, 40, 40], [250, 30, 60]);
+  return p;
+}
+
+function buildOe() {
+  const S = sceneO; S.clear();
+  S.add(quadGrid(700, 480, 9, 7, {}, C.table, true));
+  S.shadow(0, 0, 90, 46, .22);
+  S.shadow(250, 0, 58, 40, .16);
+
+  // suportul de lemn și dopul pe care stă busola
+  S.add(box(150, 8, 120, { pos: [0, 4, 0] }, C.carton));
+  S.add(cyl(26, 10, { pos: [0, 12, 0] }, C.cartonDark, 18));
+
+  // busola, în centrul colacului
+  S.add(cyl(44, 14, { pos: [0, 17, 0] }, C.steel, 28, C.steelLight));
+  S.add(disc(40, { pos: [0, 24.4, 0] }, C.white, 30));
+  const a = O.ang;
+  S.add(box(40, 3.4, 6.5, { rotY: a, pos: [Math.cos(a) * 20, 26, -Math.sin(a) * 20] }, C.red));
+  S.add(box(40, 3.4, 6.5, { rotY: a, pos: [-Math.cos(a) * 20, 26, Math.sin(a) * 20] }, C.blue));
+  S.add(cyl(4, 5, { pos: [0, 26, 0] }, C.steel, 10));
+
+  // colacul de sârmă: spirele, strânse în mănunchi
+  const shown = Math.min(O.turns, 12);
+  for (let i = 0; i < shown; i++)
+    S.add(tube(circlePath(0, RING.cy, turnZ(i, shown), RING.r, "z", 30), 2.3, C.copper, 6));
+
+  // firele spre baterie
+  S.add(tube([[RING.r - 4, RING.cy, turnZ(0, shown)], [120, 40, -40], [228, 30, -46]], 2.6, C.copper, 6));
+  S.add(tube([[RING.r - 4, RING.cy, turnZ(shown - 1, shown)], [120, 40, 40], [228, 30, 46]], 2.6, C.copper, 6));
+
+  // bateria, culcată pe masă
+  S.add(cyl(23, 96, { rotX: Math.PI / 2, pos: [250, 26, 0] }, C.battery, 22, C.steel));
+  S.add(cyl(23, 26, { rotX: Math.PI / 2, pos: [250, 26, O.rev ? 34 : -34] }, C.batteryTop, 22, C.batteryTop));
+  S.add(cyl(8, 8, { rotX: Math.PI / 2, pos: [250, 26, O.rev ? -52 : 52] }, C.steelLight, 12));
+
+  // câmpul magnetic din jurul firului de deasupra acului
+  if (O.on && O.turns > 0) {
+    [14, 23].forEach(r => S.add(tube(circlePath(0, RING.cy + RING.r, 0, r, "x", 20), 1, [118, 176, 240], 5)));
+    flow3d(S, coilPath(), O.rev ? 1 - O.phase : O.phase, 26);
+  }
 }
 
 function drawOe() {
   const ctx = ctxO, W = cvO.__w, H = cvO.__h;
   ctx.clearRect(0, 0, W, H);
-
-  // cutia de carton
-  ctx.save();
-  ctx.fillStyle = "rgba(214,186,140,.35)"; ctx.strokeStyle = "#b08a52"; ctx.lineWidth = 4;
-  ctx.beginPath(); ctx.roundRect(BOX.x, BOX.y, BOX.w, BOX.h, 10); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#8a7149"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(LANG === "ro" ? "cutie de carton cu busola înăuntru" : "cardboard box with the compass inside", BOX.x + BOX.w / 2, BOX.y + BOX.h + 22);
-  ctx.restore();
-
-  // spirele
-  const shown = Math.min(O.turns, 14);
-  ctx.save();
-  ctx.strokeStyle = O.on ? "#b5762f" : "#c9a06a"; ctx.lineWidth = 2.6;
-  for (let i = 0; i < shown; i++) {
-    const y = BOX.y + 16 + i * ((BOX.h - 32) / Math.max(shown - 1, 1));
-    ctx.beginPath(); ctx.moveTo(BOX.x - 18, y); ctx.lineTo(BOX.x + BOX.w + 18, y); ctx.stroke();
-  }
-  ctx.restore();
-  if (O.turns > 14) {
-    ctx.save(); ctx.fillStyle = "#8a7149"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "left";
-    ctx.fillText("× " + O.turns, BOX.x + BOX.w + 26, BOX.y + 14); ctx.restore();
-  }
-
-  // busola
-  ctx.save();
-  ctx.fillStyle = "rgba(235,245,250,.95)"; ctx.strokeStyle = "#7f8b98"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.arc(COMP.x, COMP.y, COMP.r, 0, 7); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#55657a"; ctx.font = "bold 13px system-ui, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  buildOe();
+  drawScene(ctx, sceneO, camO, W, H);
   const dirs = LANG === "ro" ? ["N", "E", "S", "V"] : ["N", "E", "S", "W"];
-  ctx.fillText(dirs[0], COMP.x, COMP.y - COMP.r + 12);
-  ctx.fillText(dirs[1], COMP.x + COMP.r - 12, COMP.y);
-  ctx.fillText(dirs[2], COMP.x, COMP.y + COMP.r - 12);
-  ctx.fillText(dirs[3], COMP.x - COMP.r + 12, COMP.y);
-  // acul
-  const a = O.ang - Math.PI / 2;
-  const L = COMP.r - 16;
-  ctx.translate(COMP.x, COMP.y); ctx.rotate(O.ang);
-  ctx.strokeStyle = "#d92b2b"; ctx.lineWidth = 6; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -L); ctx.stroke();
-  ctx.strokeStyle = "#2f6fd0";
-  ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, L); ctx.stroke();
-  ctx.fillStyle = "#7f8b98"; ctx.beginPath(); ctx.arc(0, 0, 5, 0, 7); ctx.fill();
-  ctx.restore();
-
-  // bateria și firele
-  const by = BOX.y + BOX.h / 2;
-  drawBattery(ctx, 806, by, 86, 44, O.rev, LANG === "ro" ? (O.batt > 1 ? O.batt + " baterii" : "1 baterie") : (O.batt > 1 ? O.batt + " batteries" : "1 battery"));
-  const path = [
-    { x: BOX.x - 18, y: BOX.y + 16 }, { x: 120, y: BOX.y + 16 }, { x: 120, y: by - 22 },
-    { x: 763, y: by - 22 }, { x: 763, y: by + 22 }, { x: 120, y: by + 22 },
-    { x: 120, y: BOX.y + BOX.h - 16 }, { x: BOX.x - 18, y: BOX.y + BOX.h - 16 }
-  ];
-  ctx.save();
-  ctx.strokeStyle = "#5b6b7c"; ctx.lineWidth = 3.5; ctx.lineJoin = "round";
-  ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke(); ctx.restore();
-
-  if (O.on && O.turns > 0) {
-    drawFlow(ctx, O.rev ? path.slice().reverse() : path, O.phase, 14);
-    // câmpul în jurul firelor
-    ctx.save();
-    ctx.strokeStyle = "rgba(31,111,235,.30)"; ctx.lineWidth = 2;
-    for (let i = 0; i < 4; i++) {
-      const r = 10 + i * 9;
-      ctx.beginPath(); ctx.arc(BOX.x + 40, BOX.y + 16, r, 0, 7); ctx.stroke();
-      ctx.beginPath(); ctx.arc(BOX.x + BOX.w - 40, BOX.y + BOX.h - 16, r, 0, 7); ctx.stroke();
-    }
-    ctx.restore();
-  }
+  label3d(ctx, camO, [58, NEEDLE_Y + 10, 0], dirs[0], W, H, "#d63737", 0, 15);
+  label3d(ctx, camO, [0, NEEDLE_Y + 10, -58], dirs[1], W, H, "#55657a", 0, 13);
+  label3d(ctx, camO, [-58, NEEDLE_Y + 10, 0], dirs[2], W, H, "#55657a", 0, 13);
+  label3d(ctx, camO, [0, NEEDLE_Y + 10, 58], dirs[3], W, H, "#55657a", 0, 13);
+  label3d(ctx, camO, [0, 0, 88], LANG === "ro" ? "busola, în centrul colacului de sârmă" : "the compass, inside the coil", W, H, "#7b6a4e", 16);
+  label3d(ctx, camO, [250, 56, 0], LANG === "ro" ? (O.batt > 1 ? O.batt + " baterii" : "1 baterie") : (O.batt > 1 ? O.batt + " batteries" : "1 battery"), W, H, "#55657a", -10);
+  label3d(ctx, camO, [-RING.r - 24, RING.cy + 26, 0], LANG === "ro" ? O.turns + " spire" : O.turns + " turns", W, H, "#a9742f", 0, 13);
 }
 
 function oeStep() {
@@ -185,80 +149,65 @@ function oeMsg(extra) {
   else say($("sayOe"), t("oe.onMsg"), "good");
 }
 $("oeSwitch").addEventListener("click", () => {
-  O.on = !O.on; $("oeSwitch").textContent = t(O.on ? "oe.off" : "oe.on");
-  oeMsg();
+  O.on = !O.on; $("oeSwitch").textContent = t(O.on ? "oe.off" : "oe.on"); oeMsg();
 });
 $("oeFlip").addEventListener("click", () => { O.rev = !O.rev; oeMsg("flip"); });
 $("turns").addEventListener("input", e => { O.turns = +e.target.value; $("vTurns").textContent = O.turns; oeMsg(); });
 $("batt").addEventListener("input", e => { O.batt = +e.target.value; $("vBatt").textContent = O.batt; oeMsg(); });
 
 /* =========================================================
-   2. ȘINELE
+   2. ȘINELE — scenă 3D
    ========================================================= */
 const cvR = $("cvRa"), ctxR = fitCanvas(cvR);
-const R = { on: false, batt: 1, mag: 1, x: 450, v: 0, phase: 0, found: {} };
-const RAIL = { top: 128, bot: 232, x0: 150, x1: 760 };
+const camR = new Cam({ yaw: -0.74, pitch: 0.40, dist: 820, target: [0, 34, 0] });
+const sceneR = new Scene();
+orbit(cvR, camR);
+const R = { on: false, batt: 1, mag: 1, x: 0, v: 0, phase: 0, found: {} };
+const RAILZ = 46, RAIL_X0 = -260, RAIL_X1 = 260, RAIL_Y = 54;
 
 function raDir() { return R.on ? R.batt * R.mag : 0; }
+function raPath() {
+  return [[-340, 26, -26], [-310, RAIL_Y, -RAILZ], [R.x, RAIL_Y, -RAILZ],
+  [R.x, RAIL_Y, RAILZ], [-310, RAIL_Y, RAILZ], [-340, 26, 26]];
+}
+
+function buildRa() {
+  const S = sceneR; S.clear();
+  S.add(quadGrid(900, 560, 11, 8, {}, C.table, true));
+  S.shadow(0, 0, 130, 90, .22); S.shadow(-340, 0, 60, 40, .18);
+
+  // magnetul
+  const magCol = R.mag > 0 ? C.red : C.blue;
+  S.add(box(210, 26, 150, { pos: [0, 13, 0] }, magCol, ["top"]));
+  S.add(quadGrid(210, 150, 6, 5, { pos: [0, 26, 0] }, R.mag > 0 ? [240, 96, 96] : [98, 154, 236]));
+
+  // șinele
+  [-RAILZ, RAILZ].forEach(z => S.add(cyl(7, RAIL_X1 - RAIL_X0 + 80, { rotZ: Math.PI / 2, pos: [0, RAIL_Y, z] }, C.copper, 14)));
+
+  // sârma liberă
+  S.add(cyl(8, 132, { rotX: Math.PI / 2, pos: [R.x, RAIL_Y + 12, 0] }, C.steelLight, 16, C.steel));
+  S.shadow(R.x, 0, 26, 52, .20);
+
+  // bateria
+  S.add(cyl(24, 92, { rotX: Math.PI / 2, pos: [-340, 26, 0] }, C.battery, 20, C.steel));
+  S.add(cyl(24, 24, { rotX: Math.PI / 2, pos: [-340, 26, R.batt > 0 ? -34 : 34] }, C.batteryTop, 20, C.batteryTop));
+  S.add(tube([[-340, 26, -26], [-310, 38, -RAILZ], [RAIL_X0 - 36, RAIL_Y, -RAILZ]], 2.8, C.copper, 6));
+  S.add(tube([[-340, 26, 26], [-310, 38, RAILZ], [RAIL_X0 - 36, RAIL_Y, RAILZ]], 2.8, C.copper, 6));
+
+  if (R.on) flow3d(S, R.batt > 0 ? raPath() : raPath().slice().reverse(), R.phase, 20);
+}
 
 function drawRa() {
   const ctx = ctxR, W = cvR.__w, H = cvR.__h;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(0,0,0,.05)"; ctx.fillRect(0, 300, W, H - 300);
-
-  // magnetul de sub șine
-  ctx.save();
-  const mx0 = 330, mx1 = 570;
-  ctx.fillStyle = R.mag > 0 ? "#d92b2b" : "#2f6fd0";
-  ctx.beginPath(); ctx.roundRect(mx0, RAIL.top - 26, mx1 - mx0, 156, 10); ctx.fill();
-  ctx.globalAlpha = .25; ctx.fillStyle = "#fff";
-  ctx.beginPath(); ctx.roundRect(mx0 + 8, RAIL.top - 18, mx1 - mx0 - 16, 140, 8); ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = "#fff"; ctx.font = "bold 20px system-ui, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(R.mag > 0 ? "N" : "S", (mx0 + mx1) / 2, RAIL.top + 52);
-  ctx.font = "12px system-ui, sans-serif";
-  ctx.fillText(LANG === "ro" ? "magnet (fața de sus)" : "magnet (top face)", (mx0 + mx1) / 2, RAIL.top + 100);
-  ctx.restore();
-
-  // șinele
-  ctx.save();
-  ctx.strokeStyle = "#c1743a"; ctx.lineWidth = 7; ctx.lineCap = "round";
-  [RAIL.top, RAIL.bot].forEach(y => { ctx.beginPath(); ctx.moveTo(RAIL.x0, y); ctx.lineTo(RAIL.x1, y); ctx.stroke(); });
-  ctx.restore();
-
-  // sârma liberă
-  ctx.save();
-  ctx.strokeStyle = "#8e96a1"; ctx.lineWidth = 10; ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(R.x, RAIL.top - 10); ctx.lineTo(R.x, RAIL.bot + 10); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.moveTo(R.x - 2, RAIL.top - 6); ctx.lineTo(R.x - 2, RAIL.bot + 6); ctx.stroke();
-  ctx.fillStyle = "#55657a"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(LANG === "ro" ? "sârma liberă" : "loose wire", R.x, RAIL.bot + 34);
-  ctx.restore();
-
-  // bateria + fire
-  drawBattery(ctx, 92, 180, 80, 42, R.batt < 0, "");
-  const path = [
-    { x: 92, y: 159 }, { x: 92, y: RAIL.top }, { x: R.x, y: RAIL.top },
-    { x: R.x, y: RAIL.bot }, { x: 92, y: RAIL.bot }, { x: 92, y: 201 }
-  ];
-  ctx.save(); ctx.strokeStyle = "#5b6b7c"; ctx.lineWidth = 3.5; ctx.lineJoin = "round";
-  ctx.beginPath(); ctx.moveTo(path[0].x, path[0].y);
-  for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
-  ctx.stroke(); ctx.restore();
-  if (R.on) drawFlow(ctx, R.batt > 0 ? path : path.slice().reverse(), R.phase, 12);
-
-  // săgeata forței
+  buildRa();
+  drawScene(ctx, sceneR, camR, W, H);
   const d = raDir();
-  if (d !== 0) {
-    ctx.save();
-    ctx.strokeStyle = "#16a34a"; ctx.fillStyle = "#16a34a"; ctx.lineWidth = 4;
-    const ax = R.x + d * 34, ay = (RAIL.top + RAIL.bot) / 2 - 56;
-    ctx.beginPath(); ctx.moveTo(R.x, ay); ctx.lineTo(ax, ay); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(ax + d * 12, ay); ctx.lineTo(ax, ay - 7); ctx.lineTo(ax, ay + 7); ctx.closePath(); ctx.fill();
-    ctx.restore();
-  }
+  if (d !== 0) arrow3d(ctx, camR, [R.x, RAIL_Y + 52, 0], [R.x + d * 90, RAIL_Y + 52, 0], W, H, "#16a34a", 5);
+  label3d(ctx, camR, [0, 30, 0], R.mag > 0 ? "N" : "S", W, H, "#ffffff", 0, 20);
+  label3d(ctx, camR, [0, 2, 104], LANG === "ro" ? "magnet (fața de sus)" : "magnet (top face)", W, H, "#7b6a4e", 16);
+  label3d(ctx, camR, [R.x, RAIL_Y + 22, 74], LANG === "ro" ? "sârma liberă" : "loose wire", W, H, "#55657a", 0);
+  label3d(ctx, camR, [-340, 60, 0], LANG === "ro" ? "baterie" : "battery", W, H, "#55657a", -8);
 }
 
 function raKey() { return (R.batt > 0 ? "n" : "r") + (R.mag > 0 ? "n" : "f"); }
@@ -278,13 +227,11 @@ function raRender() {
 
 function raStep() {
   const d = raDir();
-  if (d !== 0) {
-    R.v = clamp(R.v + d * 0.055, -2.6, 2.6);
-    R.phase = (R.phase + 0.006) % 1;
-  } else R.v *= 0.93;
+  if (d !== 0) { R.v = clamp(R.v + d * 0.05, -2.4, 2.4); R.phase = (R.phase + 0.006) % 1; }
+  else R.v *= 0.93;
   R.x += R.v;
-  if (R.x < RAIL.x0 + 20) { R.x = RAIL.x0 + 20; if (R.v < 0) { R.v = 0; if (R.on) say($("sayRa"), t("ra.edge"), "warn"); } }
-  if (R.x > RAIL.x1 - 20) { R.x = RAIL.x1 - 20; if (R.v > 0) { R.v = 0; if (R.on) say($("sayRa"), t("ra.edge"), "warn"); } }
+  if (R.x < RAIL_X0) { R.x = RAIL_X0; if (R.v < 0) { R.v = 0; if (R.on) say($("sayRa"), t("ra.edge"), "warn"); } }
+  if (R.x > RAIL_X1) { R.x = RAIL_X1; if (R.v > 0) { R.v = 0; if (R.on) say($("sayRa"), t("ra.edge"), "warn"); } }
   $("vRaDir").textContent = d === 0 ? t("ra.none") : t(d > 0 ? "ra.right" : "ra.left");
   drawRa();
   requestAnimationFrame(raStep);
@@ -293,7 +240,6 @@ function raStep() {
 function raCheck(changed) {
   if (!R.on) return;
   const d = raDir(), k = raKey();
-  const isNew = !R.found[k];
   R.found[k] = d > 0 ? 1 : -1;
   raRender();
   if (Object.keys(R.found).length === 4) { say($("sayRa"), t("ra.all"), "good"); return; }
@@ -307,83 +253,94 @@ $("raSwitch").addEventListener("click", () => {
   if (R.on) raCheck(); else say($("sayRa"), t("ra.start"));
 });
 $("raBatt").addEventListener("click", () => {
-  R.batt *= -1;
-  raCheck(R.batt * R.mag === 1 && R.batt < 0 ? "both" : "one");
+  R.batt *= -1; raCheck(R.batt < 0 && R.mag < 0 ? "both" : "one");
 });
 $("raMag").addEventListener("click", () => {
-  R.mag *= -1;
-  raCheck(R.batt < 0 && R.mag < 0 ? "both" : "one");
+  R.mag *= -1; raCheck(R.batt < 0 && R.mag < 0 ? "both" : "one");
 });
-$("raReset").addEventListener("click", () => { R.x = 450; R.v = 0; });
+$("raReset").addEventListener("click", () => { R.x = 0; R.v = 0; });
 
 /* =========================================================
-   3. MOTORUL HOMOPOLAR
+   3. MOTORUL HOMOPOLAR — scenă 3D
    ========================================================= */
 const cvM = $("cvMo"), ctxM = fitCanvas(cvM);
+const camM = new Cam({ yaw: -0.52, pitch: 0.34, dist: 540, target: [0, 96, 0] });
+const sceneM = new Scene();
+orbit(cvM, camM);
 const M = { on: false, mag: 2, pol: 1, ang: 0, spin: 0, rot: 0, heat: 0, batt: 100, cooling: false };
-const BAT = { x: 450, top: 112, bot: 296, w: 72 };
+const BTOP = 186, MAGR = 60;
+
+function wireStrand(a) {
+  const pts = [];
+  for (let i = 0; i <= 14; i++) {
+    const u = i / 14;
+    const r = 58 * u + 88 * Math.sin(Math.PI * u);
+    const y = BTOP - (BTOP - 18) * u;
+    pts.push([Math.cos(a) * r, y, -Math.sin(a) * r]);
+  }
+  return pts;
+}
+
+function buildMo() {
+  const S = sceneM; S.clear();
+  S.add(quadGrid(600, 440, 8, 7, {}, C.table, true));
+  S.shadow(0, 0, 95, 72, .26);
+
+  // magnetul de neodim
+  S.add(cyl(MAGR, 18, { pos: [0, 9, 0] }, M.pol > 0 ? C.red : C.blue, 28,
+    M.pol > 0 ? [238, 96, 96] : [96, 152, 235]));
+
+  // bateria
+  S.add(cyl(27, 150, { pos: [0, 93, 0] }, C.battery, 22, C.steel));
+  S.add(cyl(27, 34, { pos: [0, 152, 0] }, C.batteryTop, 22, C.batteryTop));
+  S.add(cyl(9, 12, { pos: [0, 175, 0] }, C.steelLight, 14, C.steelLight));
+
+  // sârma de cupru, rotită
+  const hot = M.heat > 62;
+  const col = hot ? C.copperHot : C.copper;
+  S.add(tube(wireStrand(M.ang), 3.4, col, 7));
+  S.add(tube(wireStrand(M.ang + Math.PI), 3.4, col, 7));
+
+  if (hot) {
+    [M.ang, M.ang + Math.PI].forEach(a => {
+      const r = 58 * 0.5 + 88;
+      sceneM.sprite([Math.cos(a) * r, BTOP - (BTOP - 18) * 0.5, -Math.sin(a) * r], 7, "rgba(255,120,70,.75)", true);
+    });
+  }
+}
 
 function drawMo() {
   const ctx = ctxM, W = cvM.__w, H = cvM.__h;
   ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "rgba(0,0,0,.05)"; ctx.fillRect(0, 338, W, H - 338);
+  buildMo();
+  drawScene(ctx, sceneM, camM, W, H);
 
-  // magnetul (disc, sub baterie)
-  ctx.save();
-  ctx.fillStyle = M.pol > 0 ? "#d92b2b" : "#2f6fd0";
-  ctx.beginPath(); ctx.ellipse(BAT.x, BAT.bot + 18, 74, 20, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.25)";
-  ctx.beginPath(); ctx.ellipse(BAT.x, BAT.bot + 12, 74, 18, 0, 0, 7); ctx.fill();
-  ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText(M.pol > 0 ? "N" : "S", BAT.x, BAT.bot + 14);
-  ctx.restore();
-
-  // bateria verticală
-  ctx.save();
-  ctx.fillStyle = "#3b4a5c"; ctx.strokeStyle = "#26313f"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.roundRect(BAT.x - BAT.w / 2, BAT.top, BAT.w, BAT.bot - BAT.top, 8); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#e6a23c";
-  ctx.beginPath(); ctx.roundRect(BAT.x - BAT.w / 2 + 5, BAT.top + 6, BAT.w - 10, 30, 5); ctx.fill();
-  ctx.fillStyle = "#c8cdd4";
-  ctx.beginPath(); ctx.roundRect(BAT.x - 11, BAT.top - 12, 22, 14, 3); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "#fff"; ctx.font = "bold 15px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("+", BAT.x, BAT.top + 21);
-  ctx.fillText("−", BAT.x, BAT.bot - 18);
-  ctx.restore();
-
-  // sârma de cupru (două fire, rotite)
-  const hot = M.heat > 65;
-  ctx.save();
-  ctx.strokeStyle = hot ? "#ff7043" : "#c1743a";
-  if (hot) { ctx.shadowColor = "#ff7043"; ctx.shadowBlur = 14; }
-  ctx.lineWidth = 5; ctx.lineCap = "round";
-  for (let i = 0; i < 2; i++) {
-    const a = M.ang + i * Math.PI;
-    const bx = BAT.x + Math.cos(a) * 86, by = BAT.bot + 14 + Math.sin(a) * 16;
-    const cx = BAT.x + Math.cos(a) * 120, cy = (BAT.top + BAT.bot) / 2;
-    ctx.beginPath();
-    ctx.moveTo(BAT.x, BAT.top - 10);
-    ctx.quadraticCurveTo(cx, cy, bx, by);
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // săgeți de rotație
+  // săgeata de rotație
   if (Math.abs(M.spin) > 0.004) {
-    ctx.save();
-    ctx.strokeStyle = "rgba(22,163,74,.75)"; ctx.lineWidth = 3.5;
-    const dir = Math.sign(M.spin);
-    ctx.beginPath(); ctx.ellipse(BAT.x, 86, 120, 26, 0, dir > 0 ? -0.5 : 2.6, dir > 0 ? 2.6 : 3.8); ctx.stroke();
-    ctx.restore();
+    const dir = Math.sign(M.spin), y = BTOP + 16, r = 64;
+    const pts = [];
+    for (let i = 0; i <= 10; i++) {
+      const a = M.ang + dir * (i / 10) * 2.1;
+      const q = camM.project([Math.cos(a) * r, y, -Math.sin(a) * r], W, H);
+      if (q) pts.push(q);
+    }
+    if (pts.length > 2) {
+      ctx.save(); ctx.strokeStyle = "rgba(22,163,74,.8)"; ctx.lineWidth = 4; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+      pts.forEach(p => ctx.lineTo(p.x, p.y)); ctx.stroke();
+      const b = pts[pts.length - 1], a2 = pts[pts.length - 2];
+      const ang = Math.atan2(b.y - a2.y, b.x - a2.x);
+      ctx.fillStyle = "rgba(22,163,74,.8)";
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x - Math.cos(ang - 0.45) * 12, b.y - Math.sin(ang - 0.45) * 12);
+      ctx.lineTo(b.x - Math.cos(ang + 0.45) * 12, b.y - Math.sin(ang + 0.45) * 12);
+      ctx.closePath(); ctx.fill(); ctx.restore();
+    }
   }
-
-  // etichete
-  ctx.save();
-  ctx.fillStyle = "#6c7a8c"; ctx.font = "12px system-ui, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText(LANG === "ro" ? "sârmă de cupru îndoită" : "bent copper wire", BAT.x + 210, 120);
-  ctx.fillText(LANG === "ro" ? "magnet de neodim" : "neodymium magnet", BAT.x, BAT.bot + 56);
-  ctx.fillText(LANG === "ro" ? "baterie AA" : "AA battery", BAT.x - 150, (BAT.top + BAT.bot) / 2);
-  ctx.restore();
+  label3d(ctx, camM, [0, 2, 92], LANG === "ro" ? "magnet de neodim" : "neodymium magnet", W, H, "#7b6a4e", 16);
+  label3d(ctx, camM, [0, 100, -46], LANG === "ro" ? "baterie AA" : "AA battery", W, H, "#ffffff", 0, 12);
+  label3d(ctx, camM, [140, 150, 0], LANG === "ro" ? "sârmă de cupru" : "copper wire", W, H, "#a9742f", 0);
 }
 
 function moStep() {
@@ -428,12 +385,17 @@ $("moSwitch").addEventListener("click", () => {
 });
 $("moFlip").addEventListener("click", () => { M.pol *= -1; if (M.on) say($("sayMo"), t("mo.rev"), "good"); });
 $("moReset").addEventListener("click", () => {
-  M.batt = 100; M.heat = 0; M.rot = 0; M.cooling = false;
-  say($("sayMo"), t("mo.start"));
+  M.batt = 100; M.heat = 0; M.rot = 0; M.cooling = false; say($("sayMo"), t("mo.start"));
 });
 $("moMag").addEventListener("input", e => {
   M.mag = +e.target.value; $("vMoMag").textContent = M.mag;
   if (M.on && M.mag === 1) say($("sayMo"), t("mo.weak"), "warn");
+});
+
+/* butoanele de vedere */
+["oeView", "raView", "moView"].forEach((id, k) => {
+  const el = $(id); if (!el) return;
+  el.addEventListener("click", () => [camO, camR, camM][k].reset());
 });
 
 /* =========================================================
@@ -443,7 +405,7 @@ const QUIZ = ["q1", "q2", "q3", "q4", "q5", "q6"];
 let answered = {}, score = 0;
 function buildQuiz() {
   answered = {}; score = 0; $("vScore").textContent = "";
-  const box = $("quizBox"); box.innerHTML = "";
+  const box2 = $("quizBox"); box2.innerHTML = "";
   QUIZ.forEach(q => {
     const opts = [["a", true], ["b", false], ["c", false]].sort(() => Math.random() - .5);
     const d = document.createElement("div"); d.className = "q";
@@ -463,7 +425,7 @@ function buildQuiz() {
       });
       wrap.appendChild(b);
     });
-    box.appendChild(d);
+    box2.appendChild(d);
   });
 }
 $("btnQuizReset").addEventListener("click", buildQuiz);
@@ -477,7 +439,6 @@ function onLangChange() {
   if (!R.on) say($("sayRa"), t("ra.start"));
   if (!M.on) say($("sayMo"), t("mo.start"));
   raRender(); buildQuiz();
-  drawOe(); drawRa(); drawMo();
 }
 applyI18n();
 $("vTurns").textContent = O.turns;

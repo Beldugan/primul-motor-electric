@@ -35,10 +35,12 @@
   <section id="p-oersted" class="panel">
     <h2 data-i18n="oe.h">Galvanometrul din busolă — curentul face magnet</h2>
     <p class="muted" data-i18n="oe.hint">O busolă, o cutie de carton și sârmă înfășurată în jurul ei. Pornește curentul și privește acul. Apoi schimbă numărul de spire, fără să schimbi bateria — și vezi ce se întâmplă.</p>
-    <div class="stage"><canvas id="cvOe" width="900" height="360"></canvas></div>
+    <div class="stage"><canvas id="cvOe" width="900" height="430"></canvas></div>
+    <p class="muted" data-i18n="view.hint">🖱️ Trage cu mouse-ul (sau cu degetul) ca să rotești scena în jurul ei; rotița mouse-ului apropie și depărtează.</p>
     <div class="controls">
       <button class="btn" id="oeSwitch" data-i18n="oe.on">Pornește curentul</button>
       <button class="btn ghost" id="oeFlip" data-i18n="oe.flip">Inversează bateria</button>
+      <button class="btn ghost" id="oeView" data-i18n="view.reset">Vedere inițială</button>
       <div class="field"><label for="turns" data-i18n="oe.turns">Spire</label>
         <input type="range" id="turns" min="0" max="40" value="5"><span id="vTurns">5</span></div>
       <div class="field"><label for="batt" data-i18n="oe.batt">Baterii</label>
@@ -57,12 +59,14 @@
   <section id="p-sine" class="panel hidden">
     <h2 data-i18n="ra.h">Șinele — sârma pe care o împinge magnetul</h2>
     <p class="muted" data-i18n="ra.hint">Două șine de cupru legate la baterie, un magnet dedesubt și o sârmă liberă pusă peste șine. Pornește curentul: sârma pleacă singură. Apoi inversează bateria sau întoarce magnetul și prinde regula.</p>
-    <div class="stage"><canvas id="cvRa" width="900" height="360"></canvas></div>
+    <div class="stage"><canvas id="cvRa" width="900" height="430"></canvas></div>
+    <p class="muted" data-i18n="view.hint">🖱️ Trage cu mouse-ul (sau cu degetul) ca să rotești scena în jurul ei; rotița mouse-ului apropie și depărtează.</p>
     <div class="controls">
       <button class="btn" id="raSwitch" data-i18n="ra.on">Pornește curentul</button>
       <button class="btn ghost" id="raBatt" data-i18n="ra.flipBatt">Inversează bateria</button>
       <button class="btn ghost" id="raMag" data-i18n="ra.flipMag">Întoarce magnetul</button>
       <button class="btn ghost" id="raReset" data-i18n="btn.reset">Pune sârma la mijloc</button>
+      <button class="btn ghost" id="raView" data-i18n="view.reset">Vedere inițială</button>
     </div>
     <div class="readout">
       <div class="tile"><div class="k" data-i18n="ra.dirk">Sârma pleacă spre</div><div class="v" id="vRaDir" style="font-size:1rem">—</div></div>
@@ -79,11 +83,13 @@
   <section id="p-motor" class="panel hidden">
     <h2 data-i18n="mo.h">Motorul homopolar — împingerea care se repetă</h2>
     <p class="muted" data-i18n="mo.hint">O baterie, un magnet puternic lipit de ea și o sârmă de cupru îndoită. Atât. În carte, varianta asta folosea mercur — noi o facem cu magnet, fără nicio substanță periculoasă. Atenție la termometru: ca în realitate, motorul se încălzește și cere pauză.</p>
-    <div class="stage"><canvas id="cvMo" width="900" height="400"></canvas></div>
+    <div class="stage"><canvas id="cvMo" width="900" height="430"></canvas></div>
+    <p class="muted" data-i18n="view.hint">🖱️ Trage cu mouse-ul (sau cu degetul) ca să rotești scena în jurul ei; rotița mouse-ului apropie și depărtează.</p>
     <div class="controls">
       <button class="btn" id="moSwitch" data-i18n="mo.on">Pornește motorul</button>
       <button class="btn ghost" id="moFlip" data-i18n="mo.flip">Întoarce magnetul</button>
       <button class="btn ghost" id="moReset" data-i18n="mo.fresh">Baterie nouă</button>
+      <button class="btn ghost" id="moView" data-i18n="view.reset">Vedere inițială</button>
       <div class="field"><label for="moMag" data-i18n="mo.magnet">Puterea magnetului</label>
         <input type="range" id="moMag" min="1" max="3" value="2"><span id="vMoMag">2</span></div>
     </div>
@@ -115,6 +121,7 @@
   <p data-i18n="foot.2">Aplicație didactică · Fizica distractivă 06 · funcționează offline, fără internet. Niciun experiment nu se face la priză.</p>
 </footer>
 
+<script src="engine3d.js"></script>
 <script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
