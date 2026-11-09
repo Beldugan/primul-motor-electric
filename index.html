@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ro" data-theme="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primul motor electric</title>
+<meta name="description" content="Aplicație interactivă de fizică: experiența lui Oersted, galvanometrul din busolă, șinele cu sârma care alunecă și motorul homopolar. Fizica distractivă 06.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="inner">
+    <h1 data-i18n="app.title">Primul motor electric</h1>
+    <div class="badges">
+      <button class="pill" id="langRo" aria-pressed="true">RO</button>
+      <button class="pill" id="langEn" aria-pressed="false">EN</button>
+      <button class="pill" id="themeBtn" title="light / dark">◐</button>
+    </div>
+    <p data-i18n="app.sub">Fizica distractivă 06 · după V. Atanasiu, „Fizica distractivă", 1964</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" id="tab-oersted" aria-selected="true" data-i18n="tab.oersted">1. Busola lui Oersted</button>
+    <button role="tab" id="tab-sine" aria-selected="false" data-i18n="tab.rails">2. Șinele</button>
+    <button role="tab" id="tab-motor" aria-selected="false" data-i18n="tab.motor">3. Motorul care se învârte</button>
+    <button role="tab" id="tab-quiz" aria-selected="false" data-i18n="tab.quiz">4. Quiz</button>
+  </nav>
+
+  <!-- ============ 1. OERSTED ============ -->
+  <section id="p-oersted" class="panel">
+    <h2 data-i18n="oe.h">Galvanometrul din busolă — curentul face magnet</h2>
+    <p class="muted" data-i18n="oe.hint">O busolă, o cutie de carton și sârmă înfășurată în jurul ei. Pornește curentul și privește acul. Apoi schimbă numărul de spire, fără să schimbi bateria — și vezi ce se întâmplă.</p>
+    <div class="stage"><canvas id="cvOe" width="900" height="360"></canvas></div>
+    <div class="controls">
+      <button class="btn" id="oeSwitch" data-i18n="oe.on">Pornește curentul</button>
+      <button class="btn ghost" id="oeFlip" data-i18n="oe.flip">Inversează bateria</button>
+      <div class="field"><label for="turns" data-i18n="oe.turns">Spire</label>
+        <input type="range" id="turns" min="0" max="40" value="5"><span id="vTurns">5</span></div>
+      <div class="field"><label for="batt" data-i18n="oe.batt">Baterii</label>
+        <input type="range" id="batt" min="1" max="3" value="1"><span id="vBatt">1</span></div>
+    </div>
+    <div class="readout">
+      <div class="tile"><div class="k" data-i18n="oe.dev">Deviația acului</div><div class="v" id="vDev">0°</div></div>
+      <div class="tile"><div class="k" data-i18n="oe.field">Puterea câmpului</div><div class="v" id="vField">0</div>
+        <div class="meter"><span id="barField"></span></div></div>
+      <div class="tile"><div class="k" data-i18n="oe.dir">Acul arată spre</div><div class="v" id="vDir" style="font-size:1rem">—</div></div>
+    </div>
+    <div class="say" id="sayOe"></div>
+  </section>
+
+  <!-- ============ 2. ȘINELE ============ -->
+  <section id="p-sine" class="panel hidden">
+    <h2 data-i18n="ra.h">Șinele — sârma pe care o împinge magnetul</h2>
+    <p class="muted" data-i18n="ra.hint">Două șine de cupru legate la baterie, un magnet dedesubt și o sârmă liberă pusă peste șine. Pornește curentul: sârma pleacă singură. Apoi inversează bateria sau întoarce magnetul și prinde regula.</p>
+    <div class="stage"><canvas id="cvRa" width="900" height="360"></canvas></div>
+    <div class="controls">
+      <button class="btn" id="raSwitch" data-i18n="ra.on">Pornește curentul</button>
+      <button class="btn ghost" id="raBatt" data-i18n="ra.flipBatt">Inversează bateria</button>
+      <button class="btn ghost" id="raMag" data-i18n="ra.flipMag">Întoarce magnetul</button>
+      <button class="btn ghost" id="raReset" data-i18n="btn.reset">Pune sârma la mijloc</button>
+    </div>
+    <div class="readout">
+      <div class="tile"><div class="k" data-i18n="ra.dirk">Sârma pleacă spre</div><div class="v" id="vRaDir" style="font-size:1rem">—</div></div>
+      <div class="tile"><div class="k" data-i18n="ra.found">Combinații descoperite</div><div class="v" id="vFound">0 / 4</div></div>
+    </div>
+    <table class="data" id="raTable">
+      <thead><tr><th data-i18n="ra.cBatt">Bateria</th><th data-i18n="ra.cMag">Magnetul</th><th data-i18n="ra.cRes">Încotro pleacă sârma</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <div class="say" id="sayRa"></div>
+  </section>
+
+  <!-- ============ 3. MOTORUL ============ -->
+  <section id="p-motor" class="panel hidden">
+    <h2 data-i18n="mo.h">Motorul homopolar — împingerea care se repetă</h2>
+    <p class="muted" data-i18n="mo.hint">O baterie, un magnet puternic lipit de ea și o sârmă de cupru îndoită. Atât. În carte, varianta asta folosea mercur — noi o facem cu magnet, fără nicio substanță periculoasă. Atenție la termometru: ca în realitate, motorul se încălzește și cere pauză.</p>
+    <div class="stage"><canvas id="cvMo" width="900" height="400"></canvas></div>
+    <div class="controls">
+      <button class="btn" id="moSwitch" data-i18n="mo.on">Pornește motorul</button>
+      <button class="btn ghost" id="moFlip" data-i18n="mo.flip">Întoarce magnetul</button>
+      <button class="btn ghost" id="moReset" data-i18n="mo.fresh">Baterie nouă</button>
+      <div class="field"><label for="moMag" data-i18n="mo.magnet">Puterea magnetului</label>
+        <input type="range" id="moMag" min="1" max="3" value="2"><span id="vMoMag">2</span></div>
+    </div>
+    <div class="readout">
+      <div class="tile"><div class="k" data-i18n="mo.rot">Rotații</div><div class="v" id="vRot">0</div></div>
+      <div class="tile"><div class="k" data-i18n="mo.rpm">Rotații pe minut</div><div class="v" id="vRpm">0</div></div>
+      <div class="tile"><div class="k" data-i18n="mo.heat">Temperatura firului</div><div class="v" id="vHeat">rece</div>
+        <div class="meter"><span id="barHeat"></span></div></div>
+      <div class="tile"><div class="k" data-i18n="mo.batt">Bateria</div><div class="v" id="vBattLeft">100%</div>
+        <div class="meter"><span id="barBatt"></span></div></div>
+    </div>
+    <div class="say" id="sayMo"></div>
+  </section>
+
+  <!-- ============ 4. QUIZ ============ -->
+  <section id="p-quiz" class="panel hidden">
+    <h2 data-i18n="quiz.h">Quiz — 6 întrebări</h2>
+    <div id="quizBox"></div>
+    <div class="controls">
+      <button class="btn ghost" id="btnQuizReset" data-i18n="quiz.again">Încă o dată</button>
+      <span class="score" id="vScore"></span>
+    </div>
+  </section>
+
+</div>
+
+<footer class="bot">
+  <p data-i18n="foot.1">Experimentele sunt din Virgil Atanasiu, „Fizica distractivă", E.D.P. București, 1964 — „Galvanometru dintr-o busolă" (p. 210) și „Principiul motorului electric" (p. 220). Varianta de motor cu mercur din carte (p. 221) a fost înlocuită cu motorul homopolar.</p>
+  <p data-i18n="foot.2">Aplicație didactică · Fizica distractivă 06 · funcționează offline, fără internet. Niciun experiment nu se face la priză.</p>
+</footer>
+
+<script src="i18n.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
